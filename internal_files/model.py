@@ -83,4 +83,38 @@ class Decoder(nn.Module):
 
 
 class UNet(nn.Module):
-    pass
+    def __init__(self, out_channels, enc_channels=[3, 16, 32, 64], dec_channels=[64, 32, 16], keep_dim=True, output_size=(config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)):
+        """
+        Define a UNet to output the probabilites of some class (each output channel is a class) using encoder and decoder modules
+        """
+        super().__init__()
+        # define the encoder and decoder
+        self.encoder = Encoder(enc_channels)
+        self.decorder = Decoder(dec_channels)
+
+        # compress decoder activation channels to the number of classes
+        self.class_layer = nn.Conv2d(dec_channels[-1], out_channels)
+        self.keep_dim = keep_dim
+        self.output_size = output_size
+    
+    def forward(self, x): 
+        # pass the input to the encoder to create an encoder list of activation layers
+        enc_list = self.encoder(x)
+        rev_enc_list = enc_list[::-1]
+
+        # pass the decoder final layer of the encoder as well as all other intermediate layers
+        dec_x = self.decoder(
+            rev_enc_list[0], # final layer of the encoder
+            rev_enc_list[1:] # all other layers of the encoder from 'bottom' to 'top'
+        )
+
+        # apply the convolution to map to a number of feature classes
+        class_maps = self.class_layer(dec_x)
+
+        # use pytorch functional interpolate to upsample and input tensor to a desired size if keep_dim == True
+        if self.keep_dim == True:
+            # note that size is the output spatial size - does not accout for batches or channels
+            class_maps = F.interpolate(class_maps, self.output_size)
+        
+        return class_maps
+
