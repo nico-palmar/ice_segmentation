@@ -3,10 +3,11 @@ import os
 import cv2
 
 # define locaiton of dataset including images and masks
-DATASET_PATH = os.path.join('Water Bodies Dataset')
+DATASET_PATH = os.path.join('ice_seg_dataset')
 IMAGE_PATH = os.path.join(DATASET_PATH, 'Images')
 MASK_PATH = os.path.join(DATASET_PATH, 'Masks')
-TEST_SIZE = 0.20
+TEST_SIZE = 0.08
+VALIDATION_SIZE = 0.2
 
 # get the device as a torch device to move tensors on the correct device 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
