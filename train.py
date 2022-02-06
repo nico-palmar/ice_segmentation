@@ -12,8 +12,11 @@ import matplotlib.pyplot as plt
 import torch
 import time
 import os
+import seaborn as sns 
+import pandas as pd
+
 # variable that controls if the testin gset is written on a specific training run
-write_testing_list = True
+write_testing_list = False
 
 # sort the image and mask paths to match them up
 img_paths = sorted(list(paths.list_images(config.IMAGE_PATH)))
@@ -25,14 +28,52 @@ train_x_path, valid_x_path, train_y_path, valid_y_path = train_test_split(train_
 
 # write all validation images to disk
 if write_testing_list:
-    for i in range(len(test_x_path)):
-        test_x_path[i] += ":" + test_y_path[i]
+    with open(config.TEST_PATHS) as f:
+        for i in range(len(test_x_path)):
+            test_x_path[i] += ":" + test_y_path[i]
 
-    # with open(config.TEST_PATHS) as f:
-    #     for i in range(len(test_x_path)):
-    #         test_x_path[i] += test_y_path[i]
+        contents = "\n".join(test_x_path)
+        f.write(contents)
 
-    #     contents = "\n".join(test_x_path)
+im_transforms = transforms.Compose([
+    transforms.ToPILImage(), 
+    transforms.Resize((config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)), 
+    transforms.ToTensor(),
+    transforms.Normalize((0, 0, 0), (1, 1, 1))
+])
+
+mask_transforms = transforms.Compose([
+    transforms.ToPILImage(), 
+    transforms.Resize((config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)), 
+    transforms.ToTensor(),
+])
+
+# create the training and valdiation datasets
+train_ds = SegmentationDataset(train_x_path, train_y_path, im_transforms, mask_transforms)
+valid_ds = SegmentationDataset(valid_x_path, valid_y_path, im_transforms, mask_transforms)
+
+running_y = torch.Tensor([])
+# for i, (x, y) in enumerate(train_ds):
+#     # take a look at the range of pixel values given
+#     x_mean = torch.mean(x, axis=0)
+#     # running_y = torch.cat((running_y, y.view(-1)), axis=0)
+#     # if i == 50:
+#     #     break
+
+    
+#     fig, ax = plt.subplots(2)
+#     ax[0].imshow(y.permute(1, 2, 0).detach())
+#     ax[1].imshow(x.permute(1, 2, 0).detach())
+#     plt.savefig(f'output/idx_{i}.png')
+#     if i > 20:
+#         break
+
+# sns.histplot(train_ds[21][0].view(-1))
+# plt.savefig(f'output/idx21_histplot.png')
+idx_21_series = pd.Series(train_ds[21][0].view(-1))
+descr = idx_21_series.describe()
+print(descr)
+
 
 # print(len(img_paths), len(mask_paths))
 # print(len(train_x_path), len(valid_x_path), len(test_x_path))
