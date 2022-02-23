@@ -28,7 +28,7 @@ class SegmentationDataset(Dataset):
         # read the image and go from GRB to RBG
         img = cv2.cvtColor(cv2.imread(img_path), cv2.COLOR_BGR2RGB)
         # read the mask while specifying grey scale image
-        mask = cv2.imread(mask_path, 0)
+        mask = cv2.imread(mask_path, 0) 
 
         # apply trnasforms to both image and mask if there are transforms
         if self.im_transforms is not None:

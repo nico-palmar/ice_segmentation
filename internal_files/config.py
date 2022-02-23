@@ -26,8 +26,8 @@ INIT_LR = 0.001
 NUM_EPOCHS = 40
 BATCH_SIZE = 64
 # define the input image dimensions
-INPUT_IMAGE_WIDTH = 128
-INPUT_IMAGE_HEIGHT = 128
+INPUT_IMAGE_WIDTH = 306
+INPUT_IMAGE_HEIGHT = 357
 # define threshold to filter weak predictions
 THRESHOLD = 0.5
 # define the path to the base output directory
