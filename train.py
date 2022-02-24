@@ -43,10 +43,39 @@ im_transforms = transforms.Compose([
     # transforms.Normalize((0, 0, 0), (1, 1, 1))
 ])
 
+# create a class mapping variable
+# after scanning the entire dataset, realize that classes are as follows:
+# [  0.,   1.,   2.,  10.,  20.,  30.,  40.,  50.,  60.,  70.,  80.,  90., 91.,  92., 100.]
+class_mappings = {
+    # assume 55, 1, 2 are water (graph 1 and 2 as water)
+    # TODO investigate what 0 looks like in image (and all classes in general)
+    1: 0, # map 0, 1 as water (0)
+    2: 0,
+    100: 1, # mark 100 as 1 (land)
+    10: 2, # mark all labels from 10 to 80 as other class (2)
+    20: 2,
+    30: 2,
+    40: 2,
+    50: 2,
+    60: 2,
+    70: 2,
+    80: 2,
+    90: 3, # map high ice concentration as 3
+    91: 3, 
+    92: 3, 
+    0: 4, # map 0 to unknown class, 4, for now
+}
+
 class MaskToTensor:
+    def __init__(self, mapping):
+        # dictionary mapping with key value pairs
+        self.mapping = mapping
     def __call__(self, pic):
         # TODO: ask if I need to divide by 100
-        img = torch.from_numpy(np.array(pic, np.float32, copy=False)).unsqueeze(0)
+        img = torch.from_numpy(np.array(pic, np.float32, copy=False))
+        for old_mask_val, new_mask_val in self.mapping.items():
+            # change old mask image locations to new mask image locations according to the mapping desired
+            img[img==old_mask_val] = new_mask_val
         return img
 
 mask_transforms = transforms.Compose([
@@ -62,53 +91,46 @@ mask_transforms = transforms.Compose([
 train_ds = SegmentationDataset(train_x_path, train_y_path, im_transforms, mask_transforms)
 valid_ds = SegmentationDataset(valid_x_path, valid_y_path, im_transforms, mask_transforms)
 
-running_y = torch.Tensor([])
-max_y = []
-y_vals = []
-x_vals = []
-for i, (x, y) in enumerate(train_ds):
-    # take a look at the range of pixel values given
-    # x_mean = torch.mean(x, axis=0)
-    # running_y = torch.cat((running_y, y.view(-1)), axis=0)
-    if i == 500:
-        break
-    # max_y.append(y.max().item())
-    y_vals += [*y.view(-1).tolist()]
-    x_vals += [*x.view(-1).tolist()]
-    # print(x.shape, y.shape)
+train_loader = DataLoader(train_ds, shuffle=True,batch_size=config.BATCH_SIZE)
+valid_loader = DataLoader(valid_ds, shuffle=False, batch_size=config.BATCH_SIZE)
 
+# running_y = torch.Tensor([])
+# max_y = []
+# y_vals = []
+# x_vals = []
 
+# create a unet model force sea ice classification
+n_classes = 15 # assume we are using all classes - find out if it is indeed 15
+ice_clf = UNet(n_classes).to(config.DEVICE)
+opt = optim.Adam(ice_clf.parameters(), config.INIT_LR)
+ce_loss = nn.CrossEntropyLoss()
+
+# for e in tqdm(range(config.NUM_EPOCHS)):
+for i in range(1):
+    # set the model in training mode
+    ice_clf.train()
+
+    # initialize the total training and validation loss
+    train_loss = 0
+    valid_loss = 0
+
+    y_set = torch.Tensor([]).to(config.DEVICE)
+    for x, y in train_loader:
+        # print(x, y)
+        x = x.to(config.DEVICE)
+        y = y.to(config.DEVICE)
+        y_set = torch.cat((y_set, y.view(-1).unique())).unique()
+        
+        # pred = ice_clf(x) # shape (BS, Classes, L, W)
+        # # want to take loss between pred (BS, Classes, L, W) and targ (BS, 1, L, W) = (BS, L, W)
+        # loss = ce_loss(pred, y)
+        
+        # # update weights
+        # opt.zero_grad()
+        # loss.backward()
+        # opt.step()
+        
+        # train_loss += loss.item()
+    print(y_set)
     
-    # fig, ax = plt.subplots(2)
-    # ax[0].imshow(y.permute(1, 2, 0).detach())
-    # ax[1].imshow(x.permute(1, 2, 0).detach())
-    # plt.savefig(f'output/idx_{i}.png')
-    # if i > 500:
-    #     break
-
-print(pd.Series(y_vals).value_counts())
-# print(len(y_vals))
-# set_y = set(y_vals)
-# print(len(set_y))
-# print(sorted(list(set_y)))
-# print(set_y)
-
-# set_x = set(x_vals)
-# print(len(set_x))
-# print(sorted(list(set_x)))
-
-# ax = sns.histplot(y_vals)
-# ax.set_title('X values histplot adjusted')
-
-# plt.savefig(f'output/im_first_one_hundred_adjusted_vals.png')
-
-# sns.histplot(max_y)
-# plt.savefig(f'output/max_mask_y.png')
-
-# idx_21_series = pd.Series(train_ds[21][0].view(-1))
-# descr = idx_21_series.describe()
-# print(descr)
-
-
-# print(len(img_paths), len(mask_paths))
-# print(len(train_x_path), len(valid_x_path), len(test_x_path))
+    

@@ -11,7 +11,7 @@ class Block(nn.Module):
     Create a unet block that will take the number of input and output channels, and apply two convolutions to give this number of channels
     """
     def __init__(self, in_ch, out_ch, ks=3, stride=1, normalize=False, pad=False):
-        super.__init__()
+        super().__init__()
         padding = ks//2 if pad else 0
         self.conv1 = nn.Conv2d(in_ch, out_ch, ks, stride, padding)
         self.conv2 = nn.Conv2d(out_ch, out_ch, ks, stride, padding)
@@ -25,7 +25,7 @@ class Block(nn.Module):
 
 class Encoder(nn.Module):
     def __init__(self, channels=[3, 16, 32, 64]):
-        super.__init__()
+        super().__init__()
         # create 3 encoder blocks according to the channels 
         self.enc_blocks = nn.ModuleList([
             Block(channels[i], channels[i+1]) for i in range(len(channels)-1)
@@ -93,7 +93,7 @@ class UNet(nn.Module):
         self.decorder = Decoder(dec_channels)
 
         # compress decoder activation channels to the number of classes
-        self.class_layer = nn.Conv2d(dec_channels[-1], out_channels)
+        self.class_layer = nn.Conv2d(dec_channels[-1], out_channels, 3)
         self.keep_dim = keep_dim
         self.output_size = output_size
     
