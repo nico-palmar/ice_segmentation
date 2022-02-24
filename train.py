@@ -46,9 +46,11 @@ im_transforms = transforms.Compose([
 # create a class mapping variable
 # after scanning the entire dataset, realize that classes are as follows:
 # [  0.,   1.,   2.,  10.,  20.,  30.,  40.,  50.,  60.,  70.,  80.,  90., 91.,  92., 100.]
+# TODO: make this an ordered dict to ensure order of mappings
 class_mappings = {
     # assume 55, 1, 2 are water (graph 1 and 2 as water)
     # TODO investigate what 0 looks like in image (and all classes in general)
+    0: 4, # map 0 to unknown class, 4, for now
     1: 0, # map 0, 1 as water (0)
     2: 0,
     100: 1, # mark 100 as 1 (land)
@@ -63,7 +65,6 @@ class_mappings = {
     90: 3, # map high ice concentration as 3
     91: 3, 
     92: 3, 
-    0: 4, # map 0 to unknown class, 4, for now
 }
 
 class MaskToTensor:
@@ -80,7 +81,7 @@ class MaskToTensor:
 
 mask_transforms = transforms.Compose([
     transforms.ToPILImage(), 
-    MaskToTensor(),
+    MaskToTensor(class_mappings),
     # transforms.Resize((config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)), 
     # transforms.ToTensor(),
     # lambda im_tens: im_tens * (255/100)
