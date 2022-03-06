@@ -45,6 +45,10 @@ class SegmentationDataset(Dataset):
             plt.title(f'Mask testing for {self.test_val}')
             ax[0].imshow(mask_clone)
             ax[1].imshow(img)
+            # remove all ticks from axis - images are 357x300 (approx) 
+            for a in ax:
+                a.set_xticks([])
+                a.set_yticks([])
             plt.savefig(f'output/mask_testing_{idx}.png')
             plt.close()
             self.testing_im += 1

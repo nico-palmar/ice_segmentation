@@ -32,7 +32,7 @@ class Encoder(nn.Module):
         ])
         # create max pooling 2x2 layer
         self.pool = nn.MaxPool2d(2)
-    
+        
     def forward(self, x): 
         enc_outs = []
         # loop through encoder blocks and store results in list
@@ -41,7 +41,6 @@ class Encoder(nn.Module):
             enc_outs.append(x)
             # apply pooling before going to the next block
             x = self.pool(x)
-
         # return list
         return enc_outs
 
@@ -83,17 +82,17 @@ class Decoder(nn.Module):
 
 
 class UNet(nn.Module):
-    def __init__(self, out_channels, enc_channels=[3, 16, 32, 64], dec_channels=[64, 32, 16], keep_dim=True, output_size=(config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)):
+    def __init__(self, out_channels, enc_channels=[3, 16, 32, 64], dec_channels=[64, 32, 16], keep_dim=True, output_size=(config.INPUT_IMAGE_WIDTH, config.INPUT_IMAGE_HEIGHT)):
         """
         Define a UNet to output the probabilites of some class (each output channel is a class) using encoder and decoder modules
         """
         super().__init__()
         # define the encoder and decoder
         self.encoder = Encoder(enc_channels)
-        self.decorder = Decoder(dec_channels)
+        self.decoder = Decoder(dec_channels)
 
         # compress decoder activation channels to the number of classes
-        self.class_layer = nn.Conv2d(dec_channels[-1], out_channels, 3)
+        self.class_layer = nn.Conv2d(dec_channels[-1], out_channels, 1)
         self.keep_dim = keep_dim
         self.output_size = output_size
     
@@ -112,6 +111,7 @@ class UNet(nn.Module):
         class_maps = self.class_layer(dec_x)
 
         # use pytorch functional interpolate to upsample and input tensor to a desired size if keep_dim == True
+        # TODO: investigate the effects of upsampling by a large amount using this function (is there a better way?)
         if self.keep_dim == True:
             # note that size is the output spatial size - does not accout for batches or channels
             class_maps = F.interpolate(class_maps, self.output_size)

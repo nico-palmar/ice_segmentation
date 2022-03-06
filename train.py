@@ -79,26 +79,17 @@ class MaskToTensor:
 mask_transforms = transforms.Compose([
     transforms.ToPILImage(), 
     MaskToTensor(class_mappings),
-    # transforms.Resize((config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)), 
-    # transforms.ToTensor(),
-    # lambda im_tens: im_tens * (255/100)
-    # lambda im_tens: torch.round(im_tens * 10**2) / (10**n_digits)
 ])
 
 # create the training and valdiation datasets
-train_ds = SegmentationDataset(train_x_path, train_y_path, im_transforms, mask_transforms, testing=True, test_val=np.array([90, 91, 92]))
+train_ds = SegmentationDataset(train_x_path, train_y_path, im_transforms, mask_transforms, testing=False, test_val=np.array([90, 91, 92]))
 valid_ds = SegmentationDataset(valid_x_path, valid_y_path, im_transforms, mask_transforms)
 
 train_loader = DataLoader(train_ds, shuffle=True,batch_size=config.BATCH_SIZE)
 valid_loader = DataLoader(valid_ds, shuffle=False, batch_size=config.BATCH_SIZE)
 
-# running_y = torch.Tensor([])
-# max_y = []
-# y_vals = []
-# x_vals = []
-
 # create a unet model force sea ice classification
-n_classes = 15 # assume we are using all classes - find out if it is indeed 15
+n_classes = len(set(class_mappings.values())) # the number of classes are the number of distinct classes assigned above
 ice_clf = UNet(n_classes).to(config.DEVICE)
 opt = optim.Adam(ice_clf.parameters(), config.INIT_LR)
 ce_loss = nn.CrossEntropyLoss()
@@ -107,28 +98,24 @@ ce_loss = nn.CrossEntropyLoss()
 for i in range(1):
     # set the model in training mode
     ice_clf.train()
-
     # initialize the total training and validation loss
     train_loss = 0
     valid_loss = 0
-
-    y_set = torch.Tensor([]).to(config.DEVICE)
-    for x, y in train_loader:
-        # print(x, y)
+    for j, (x, y) in enumerate(train_loader):
         x = x.to(config.DEVICE)
-        y = y.to(config.DEVICE)
-        y_set = torch.cat((y_set, y.view(-1).unique())).unique()
+        y = y.to(config.DEVICE).long()    
+        pred = ice_clf(x) # shape (BS, Classes, L, W)
+        # want to take loss between pred (BS, Classes, L, W) and targ (BS, 1, L, W) = (BS, L, W)
+        loss = ce_loss(pred, y)
         
-        # pred = ice_clf(x) # shape (BS, Classes, L, W)
-        # # want to take loss between pred (BS, Classes, L, W) and targ (BS, 1, L, W) = (BS, L, W)
-        # loss = ce_loss(pred, y)
+        # update weights
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
         
-        # # update weights
-        # opt.zero_grad()
-        # loss.backward()
-        # opt.step()
-        
-        # train_loss += loss.item()
-    print(y_set)
+        train_loss += loss.item()
+    
+    # TODO: At the end of epoch, get validation loss
+    # TODO: At the end of epoch, get metrics
     
     
