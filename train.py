@@ -38,19 +38,15 @@ if write_testing_list:
 
 im_transforms = transforms.Compose([
     transforms.ToPILImage(), 
-    # transforms.Resize((config.INPUT_IMAGE_HEIGHT, config.INPUT_IMAGE_WIDTH)), 
     transforms.ToTensor(),
-    # transforms.Normalize((0, 0, 0), (1, 1, 1))
 ])
 
 # create a class mapping variable
 # after scanning the entire dataset, realize that classes are as follows:
 # [  0.,   1.,   2.,  10.,  20.,  30.,  40.,  50.,  60.,  70.,  80.,  90., 91.,  92., 100.]
-# TODO: make this an ordered dict to ensure order of mappings
 class_mappings = {
     # assume 55, 1, 2 are water (graph 1 and 2 as water)
-    # TODO investigate what 0 looks like in image (and all classes in general)
-    0: 4, # map 0 to unknown class, 4, for now
+    # 0: 4, # the current 0 values are just water, these can be kept as they are
     1: 0, # map 0, 1 as water (0)
     2: 0,
     100: 1, # mark 100 as 1 (land)
@@ -79,6 +75,7 @@ class MaskToTensor:
             img[img==old_mask_val] = new_mask_val
         return img
 
+
 mask_transforms = transforms.Compose([
     transforms.ToPILImage(), 
     MaskToTensor(class_mappings),
@@ -89,7 +86,7 @@ mask_transforms = transforms.Compose([
 ])
 
 # create the training and valdiation datasets
-train_ds = SegmentationDataset(train_x_path, train_y_path, im_transforms, mask_transforms)
+train_ds = SegmentationDataset(train_x_path, train_y_path, im_transforms, mask_transforms, testing=True, test_val=np.array([90, 91, 92]))
 valid_ds = SegmentationDataset(valid_x_path, valid_y_path, im_transforms, mask_transforms)
 
 train_loader = DataLoader(train_ds, shuffle=True,batch_size=config.BATCH_SIZE)
