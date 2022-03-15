@@ -97,47 +97,50 @@ ce_loss = nn.CrossEntropyLoss()
 # dictionary to include all training and validation metrics and losses as lists
 all_metrics = {"t_loss": [], "v_loss": []}
 
+print("Training Starting")
 # for i in tqdm(range(config.NUM_EPOCHS)):
 # for i in tqdm(range(5)):
-print("Training Starting")
-for i in range(5):
+for i in range(config.NUM_EPOCHS):
     # set the model in training mode
     ice_clf.train()
     # initialize the total training and validation loss
     train_loss = 0
     valid_loss = 0
-    for j, (x, y) in enumerate(train_loader):
-        x = x.to(config.DEVICE)
-        y = y.to(config.DEVICE).long()    
-        pred = ice_clf(x) # shape (BS, Classes, L, W)
-        # want to take loss between pred (BS, Classes, L, W) and targ (BS, 1, L, W) = (BS, L, W)
-        loss = ce_loss(pred, y)
-        
-        # update weights
-        opt.zero_grad()
-        loss.backward()
-        opt.step()
-        
-        train_loss += loss.item()
-    # get the total number of train steps
-    avg_train_loss = round((train_loss/j), 2)
+    with tqdm(total=len(train_loader)) as pbar:
+        for j, (x, y) in enumerate(train_loader):
+            x = x.to(config.DEVICE)
+            y = y.to(config.DEVICE).long()    
+            pred = ice_clf(x) # shape (BS, Classes, L, W)
+            # want to take loss between pred (BS, Classes, L, W) and targ (BS, 1, L, W) = (BS, L, W)
+            loss = ce_loss(pred, y)
+            
+            # update weights
+            opt.zero_grad()
+            loss.backward()
+            opt.step()
+            
+            train_loss += loss.item()
+            pbar.update(1)
+        # get the total number of train steps
+        avg_train_loss = round((train_loss/j), 2)
 
-    # TODO: At the end of epoch, get validation loss
-    # TODO: At the end of epoch, get metrics
-    ice_clf.eval()
-    with torch.no_grad():
-        for k, (x, y) in enumerate(valid_loader):
-            x, y = x.to(config.DEVICE), y.to(config.DEVICE).long()
-            val_loss = ce_loss(ice_clf(x), y).item()
-            valid_loss += val_loss
-        avg_valid_loss = round((valid_loss/k), 2)
-    
-    # add average loss values to map to keep track of them
-    all_metrics["t_loss"].append(avg_train_loss)
-    all_metrics["v_loss"].append(avg_valid_loss)
+        # TODO: At the end of epoch, get validation loss
+        # TODO: At the end of epoch, get metrics
+        ice_clf.eval()
+        # print("Model validation")
+        with torch.no_grad():
+            for k, (x, y) in enumerate(valid_loader):
+                x, y = x.to(config.DEVICE), y.to(config.DEVICE).long()
+                val_loss = ce_loss(ice_clf(x), y).item()
+                valid_loss += val_loss
+            avg_valid_loss = round((valid_loss/k), 2)
+        # print("Model validation complete")
+        # add average loss values to map to keep track of them
+        all_metrics["t_loss"].append(avg_train_loss)
+        all_metrics["v_loss"].append(avg_valid_loss)
 
-    # print the metrics/losses to console
-    print(f"Epoch {i} | Train Loss {avg_train_loss} | Valid Loss {avg_valid_loss}")
+        # print the metrics/losses to console
+        print(f"Epoch {i} | Train Loss {avg_train_loss} | Valid Loss {avg_valid_loss}")
 
     
 # todo, at the end of the training, plot all the results
