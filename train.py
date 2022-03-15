@@ -131,8 +131,12 @@ for i in range(config.NUM_EPOCHS):
         with torch.no_grad():
             for k, (x, y) in enumerate(valid_loader):
                 x, y = x.to(config.DEVICE), y.to(config.DEVICE).long()
-                val_loss = ce_loss(ice_clf(x), y).item()
+                pred = ice_clf(x)
+                # update the validaton loss
+                val_loss = ce_loss(pred, y).item()
                 valid_loss += val_loss
+                # compute other metrics
+                # TODO: identify predicitons being made to see how to eval accuracy
             avg_valid_loss = round((valid_loss/k), 2)
         # print("Model validation complete")
         # add average loss values to map to keep track of them
@@ -141,6 +145,8 @@ for i in range(config.NUM_EPOCHS):
 
         # print the metrics/losses to console
         print(f"Epoch {i} | Train Loss {avg_train_loss} | Valid Loss {avg_valid_loss}")
+
+        # TODO: add functionality to save the model at the end of the epoch (or at the end of the training process? Or if improved model)
 
     
 # todo, at the end of the training, plot all the results
@@ -152,6 +158,8 @@ metric_ax.set_xlabel('Epoch')
 metric_ax.set_ylabel('Loss')
 metric_ax.figure.savefig('output/loss_and_metric.png')
 print("Done")
+
+# TODO: graph results on test set to check how well model generalizes
 
         
 
