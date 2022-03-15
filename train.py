@@ -68,7 +68,6 @@ class MaskToTensor:
         # dictionary mapping with key value pairs
         self.mapping = mapping
     def __call__(self, pic):
-        # TODO: ask if I need to divide by 100
         img = torch.from_numpy(np.array(pic, np.float32, copy=False))
         for old_mask_val, new_mask_val in self.mapping.items():
             # change old mask image locations to new mask image locations according to the mapping desired
@@ -82,9 +81,11 @@ mask_transforms = transforms.Compose([
 ])
 
 # create the training and valdiation datasets
+print("Creating Datasets")
 train_ds = SegmentationDataset(train_x_path, train_y_path, im_transforms, mask_transforms, testing=False, test_val=np.array([90, 91, 92]))
 valid_ds = SegmentationDataset(valid_x_path, valid_y_path, im_transforms, mask_transforms)
 
+print("Creating Dataloaders")
 train_loader = DataLoader(train_ds, shuffle=True,batch_size=config.BATCH_SIZE)
 valid_loader = DataLoader(valid_ds, shuffle=False, batch_size=config.BATCH_SIZE)
 
@@ -93,9 +94,13 @@ n_classes = len(set(class_mappings.values())) # the number of classes are the nu
 ice_clf = UNet(n_classes).to(config.DEVICE)
 opt = optim.Adam(ice_clf.parameters(), config.INIT_LR)
 ce_loss = nn.CrossEntropyLoss()
+# dictionary to include all training and validation metrics and losses as lists
+all_metrics = {"t_loss": [], "v_loss": []}
 
-# for e in tqdm(range(config.NUM_EPOCHS)):
-for i in range(1):
+# for i in tqdm(range(config.NUM_EPOCHS)):
+# for i in tqdm(range(5)):
+print("Training Starting")
+for i in range(5):
     # set the model in training mode
     ice_clf.train()
     # initialize the total training and validation loss
@@ -114,8 +119,38 @@ for i in range(1):
         opt.step()
         
         train_loss += loss.item()
-    
+    # get the total number of train steps
+    avg_train_loss = round((train_loss/j), 2)
+
     # TODO: At the end of epoch, get validation loss
     # TODO: At the end of epoch, get metrics
+    ice_clf.eval()
+    with torch.no_grad():
+        for k, (x, y) in enumerate(valid_loader):
+            x, y = x.to(config.DEVICE), y.to(config.DEVICE).long()
+            val_loss = ce_loss(ice_clf(x), y).item()
+            valid_loss += val_loss
+        avg_valid_loss = round((valid_loss/k), 2)
+    
+    # add average loss values to map to keep track of them
+    all_metrics["t_loss"].append(avg_train_loss)
+    all_metrics["v_loss"].append(avg_valid_loss)
+
+    # print the metrics/losses to console
+    print(f"Epoch {i} | Train Loss {avg_train_loss} | Valid Loss {avg_valid_loss}")
+
+    
+# todo, at the end of the training, plot all the results
+metric_df = pd.DataFrame(all_metrics)
+sns.set_style('darkgrid')
+metric_ax = sns.lineplot(data=metric_df[['t_loss', 'v_loss']])
+metric_ax.set_title('Training Metrics')
+metric_ax.set_xlabel('Epoch')
+metric_ax.set_ylabel('Loss')
+metric_ax.figure.savefig('output/loss_and_metric.png')
+print("Done")
+
+        
+
     
     
